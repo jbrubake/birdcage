@@ -1,0 +1,99 @@
+#!/bin/sh
+#
+
+# TODO: make sure user has API keys and an SSH key installed to "workdir"
+
+set -e
+
+# Documentation {{{1
+#
+VERSION='1.0'
+
+print_help() {
+    cat <<END >&2
+Usage: $0 [OPTION] <name>
+
+Run firefox and a VPN inside a Docker container <name>
+
+  -b, --build         rebuild the Docker image
+  -d, --workdir [DIR] where shared files are stored
+  -h, --help   	      display this help and exit
+  -v, --verbose       explain what is being done
+  -V, --version       output version information and exit
+END
+}
+
+print_version() {
+    cat <<END >&2
+$0 $VERSION
+END
+}
+
+# Process options {{{1
+#
+getopt -T || exit_status=$?
+if [ $exit_status -ne 4 ]; then
+    printf "Your version of getopt(1) is out of date\n" >&2
+    exit 1
+fi
+
+TEMP=$(getopt -n "$0" -o bd:w:hvV \
+            --long build,workdir:,dockerdir:help,version \
+            -- "$@")
+
+if [ $? -ne 0 ]; then
+    print_help
+    exit 1
+fi
+
+eval set -- "$TEMP"
+unset TEMP
+
+verbose=
+build='n'
+workdir="$HOME/var/lib/birdcage"
+dockerdir="."
+while true; do
+    case "$1" in
+        -b | --build)    build='y';     shift ;;
+        -d | --dockerdir) dockerdir="$2";  shift 2 ;;
+        -w | --workdir)  workdir="$2";  shift 2 ;;
+        -v | --verbose)  verbose='-v';  shift ;;
+        -h | --help)     print_help;    exit 0 ;;
+        -V | --version)  print_version; exit 0 ;;
+        --)                            shift; break ;;
+        *)              ;;
+    esac
+done
+
+# Main {{{1
+#
+DOCKER_IMAGE=birdcage
+
+uid=$(id -u)
+user=$(id -un)
+instance=
+export instance uid user workdir
+
+if [ "$build" = 'y' ]; then
+    [ -z "$verbose" ] && q='-q'
+    docker compose -f "$dockerdir/docker-compose.yml" build $q --no-cache
+else
+    if [ -z "$1" ]; then
+        printf "No instance name specified\n" >&2
+        print_help 1>&2
+        exit 1
+    else
+        instance="$1"
+    fi
+
+    mkdir $verbose -p "$workdir/$instance/firefox"
+    mkdir $verbose -p "$workdir/$instance/vpn"
+
+    test -n "$verbose" && printf "Starting %s...\n" "$instance"
+
+    docker compose -f "$dockerdir/docker-compose.yml" run --rm "$DOCKER_IMAGE"
+fi
+
+exit $?
+

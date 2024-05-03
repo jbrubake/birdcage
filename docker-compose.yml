@@ -1,0 +1,19 @@
+services:
+  birdcage:
+    build:
+      context: .
+      args:
+        uid: ${uid}
+        user: ${user}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+      - ${workdir}/${instance}/vpn:/etc/openvpn/client:ro
+      - ${workdir}/${instance}/firefox/:/home/${USER}/.mozilla:rw
+      - ${workdir}/${instance}/fenx:/opt/fenx:rw
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun
+    environment:
+      - DISPLAY=${DISPLAY}
+

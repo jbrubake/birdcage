@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ -r /etc/openvpn/client/vpn.conf ] && [ -r /etc/openvpn/client/auth.txt ]; then
+    /usr/sbin/openvpn \
+        --daemon \
+        --script-security 2 \
+        --up /etc/openvpn/up.sh \
+        --down /etc/openvpn/down.sh \
+        --config /etc/openvpn/client/vpn.conf \
+        --auth-user-pass /etc/openvpn/client/auth.txt 
+fi
+
+exec su-exec "${USER}" /bin/sh
+
